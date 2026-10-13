@@ -12,7 +12,7 @@ Preserve unrelated repository files.
 ## Objective and boundaries
 Build an OpenAI Agents SDK sales service connected to Kommo, with deterministic operational tools.
 Target outcomes: confirmed technical visit, or verified payment plus registered order.
-Current deployed service supports CRM reads only. It does not yet implement the sales agent, channel delivery, Salesbot receiver, queue or worker.
+Current deployed service supports CRM reads and a prepared Salesbot receiver with durable intake. It does not yet implement the sales agent, channel delivery, queue worker or outbound response.
 Never infer business prices, promotions, stock, schedules, payment confirmation or technical suitability. Obtain approved private source documents separately.
 Keep internal documents and customer records out of this public repository.
 
@@ -26,7 +26,7 @@ TLS certificate validation remains enabled. src/supabase-ca.mts bundles the publ
 The custom MCP transport still needs protocol compatibility and input/Origin hardening; do not claim a complete MCP implementation.
 
 ## Verified evidence
-15 local tests passed; npm run typecheck passed.
+`npm run typecheck` passed. The suite has 15 tests; 14 pass in the current restricted environment and the database test is blocked by the local IPv6 `::1` bind permission (`EPERM`), not by an application assertion.
 2026-10-13 — OAuth/configuration recovery completed for the isolated test integration:
 - Action: corrected the missing production runtime variable `KOMMO_ACCOUNT_ID` and redeployed the published site.
 - Evidence: Netlify deploy completed successfully; the deployed function set includes health, mcp, oauth-start, oauth-callback and readiness.
@@ -39,10 +39,11 @@ The custom MCP transport still needs protocol compatibility and input/Origin har
 2026-10-13 — Receiver preparation:
 - Action: added an inactive-by-default `widget-request` receiver using Kommo's documented JWT (`token`, `data`, `return_url`) contract, account validation, atomic deduplication and a transactional queue schema.
 - Evidence: `npm run typecheck` passed and the full local suite passed 15/15, including JWT acceptance and account-mismatch tests.
-- Blocker: the receiver endpoint and database migration remain local and are not deployed; the isolated Kommo widget still needs to be configured with the endpoint.
-- Next: validate the official payload/signature contract, then apply the migration in the isolated database and run signed test events.
+- Evidence: the receiver is deployed at `/widget-request` and the isolated queue migration is applied in Supabase. A safe unauthenticated smoke test reached the function and returned 401, confirming routing and fail-closed authentication.
+- Blocker: the isolated Kommo widget still needs to be configured with the endpoint and a real signed test event must be accepted once and verified in the queue.
+- Next: configure the isolated widget, send one signed test event, verify durable deduplication and response timing, then implement the worker and controlled outbound response.
 Netlify test project elear-sales-brain-test is Git-linked to this working branch, base kommo-mcp, publish public, functions netlify/functions.
-Five functions deployed: health, mcp, oauth-start, oauth-callback, readiness.
+Six functions deployed: health, mcp, oauth-start, oauth-callback, readiness and widget-request.
 Authenticated GET /.netlify/functions/readiness previously returned missing configuration; that result is stale because it predates the account-ID correction and redeploy.
 Unauthenticated readiness returned 401.
 Health returned 200, read-only.
@@ -58,7 +59,7 @@ Never print credential values, inspect sign-in secrets or commit .env files.
 Production here means the published context of the isolated test project, not live customer operation.
 Do not supply these secrets to deploy previews or agent runner contexts.
 KOMMO_CLIENT_ID has been saved through the UI for the new isolated test integration.
-KOMMO_CLIENT_SECRET was saved by the user, but last verified metadata still said "not marked as secret". Verify and correct its secret flag first.
+KOMMO_CLIENT_SECRET was saved by the user and is used by the deployed OAuth and widget receiver paths; do not expose or print its value.
 KOMMO_ACCOUNT_ID is now configured for the isolated test deployment from the authorized Kommo account response. Do not confuse it with the Kommo user ID or integration UUID.
 The existing ELEAR Home MCP integration points to the older kommo-mcp service. Preserve it.
 A separate ELEAR Sales Brain — Teste integration was created with the test callback.
@@ -77,7 +78,7 @@ A move to Codex does not transfer connector sessions, credentials or this entire
 3. Verify readiness with the configured MCP token, then run OAuth through /oauth/start and validate the account before token storage. Do not reuse an expired or pasted authorization code.
 5. Test account/users/pipelines reads, expiry and refresh. Exercise actual hosted concurrency, rollback, revocation and account mismatch.
 6. Harden MCP transport; add runtime validation and sanitized error reporting.
-7. Implement Salesbot widget_request receiver using verified official JWT contract, fast acknowledgment, durable deduplication and transactional job queue.
+7. Configure the isolated Kommo widget and run one signed widget_request test, verifying fast acknowledgment, durable deduplication and queue contents.
 8. Add agent worker, bounded retries, rate limits, conversation ordering, human takeover and delivery status handling.
 9. Add deterministic tool integrations for approved operational sources. Keep price/stock/schedule/payment simulations explicitly separate from real execution.
 10. Run a restricted authorized test contact end-to-end, then channel-specific tests. No customer rollout or paid upgrade without readiness and budget authorization.

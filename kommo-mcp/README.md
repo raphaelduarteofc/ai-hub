@@ -23,7 +23,7 @@ MCP tools expose read-only allowlisted resources. Outbound messages, orders, vis
 
 `/.netlify/functions/widget-request` is prepared for Kommo's Salesbot `widget_request` contract. It accepts the documented `token`, `data` and `return_url` body, verifies the JWT with `KOMMO_CLIENT_SECRET`, checks `account_id` against `KOMMO_ACCOUNT_ID`, and enqueues a deduplicated event. The endpoint returns HTTP 200 only after the event is durably accepted.
 
-Activation requires, in order: apply `database/migrations/20261013220000_widget_queue.sql` to the isolated database, deploy the branch, configure the Kommo widget endpoint, send a signed test event, and verify the response within two seconds. No production customer flow is enabled by this code.
+The migration is applied to the isolated test database and the receiver is deployed at `/widget-request`. Remaining activation work is limited to configuring the isolated Kommo widget, sending a signed test event, and verifying durable acceptance, deduplication and response within two seconds. No production customer flow is enabled by this code.
 
 ## Validation limits
 
