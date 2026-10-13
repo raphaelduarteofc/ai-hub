@@ -24,3 +24,8 @@
   from = "/oauth/callback"
   to = "/.netlify/functions/oauth-callback"
   status = 200
+
+[[redirects]]
+  from = "/widget-request"
+  to = "/.netlify/functions/widget-request"
+  status = 200
