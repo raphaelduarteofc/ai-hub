@@ -5,6 +5,22 @@ import { database } from './database.mts';
 
 type WidgetEvent = { event_id: string; conversation_id: string; payload: unknown; return_url: string };
 
+export function decodeKommoWidgetBody(body: string): unknown {
+  if (body.trimStart().startsWith('{')) return JSON.parse(body);
+  const form = new URLSearchParams(body);
+  if (!form.has('token') || !form.has('return_url')) throw new Error('Invalid widget request');
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of form) {
+    const match = /^data\[([^\[\]]+)\]$/.exec(key);
+    if (match) Object.defineProperty(data, match[1], { value, enumerable: true });
+  }
+  return {
+    token: form.get('token'),
+    return_url: form.get('return_url'),
+    data: form.has('data') ? JSON.parse(form.get('data')!) : data,
+  };
+}
+
 export function parseWidgetEvent(value: unknown): WidgetEvent {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid widget event');
   const event = value as Partial<WidgetEvent>;

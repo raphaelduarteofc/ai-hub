@@ -1,7 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SignJWT } from 'jose';
-import { parseKommoWidgetRequest } from '../src/widget-receiver.mts';
+import { decodeKommoWidgetBody, parseKommoWidgetRequest } from '../src/widget-receiver.mts';
+
+test('decodes form-encoded Kommo webhooks without changing token or callback', () => {
+  const body = new URLSearchParams({ token: 'signed.token', return_url: 'https://example.com/api/v4/salesbot/1/continue/2', 'data[message]': 'Olá + teste', 'data[source]': 'widget' }).toString();
+  assert.deepEqual(decodeKommoWidgetBody(body), { token: 'signed.token', return_url: 'https://example.com/api/v4/salesbot/1/continue/2', data: { message: 'Olá + teste', source: 'widget' } });
+});
+
+test('decodes JSON webhooks and rejects malformed bodies', () => {
+  const value = { token: 'signed.token', return_url: 'https://example.com/api/v4/test', data: { message: 'Olá' } };
+  assert.deepEqual(decodeKommoWidgetBody(JSON.stringify(value)), value);
+  assert.throws(() => decodeKommoWidgetBody('invalid'), /Invalid widget request/);
+});
 
 test('accepts Kommo widget JWT and derives a stable event id without storing the token', async () => {
   process.env.KOMMO_CLIENT_SECRET = 'widget-secret';

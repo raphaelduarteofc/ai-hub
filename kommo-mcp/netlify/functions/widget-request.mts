@@ -1,11 +1,11 @@
-import { enqueueWidgetEvent, parseKommoWidgetRequest } from '../../src/widget-receiver.mts';
+import { decodeKommoWidgetBody, enqueueWidgetEvent, parseKommoWidgetRequest } from '../../src/widget-receiver.mts';
 
 export default async (request: Request) => {
   const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
   if (request.method !== 'POST') return Response.json({ error: 'POST only' }, { status: 405, headers: { ...headers, Allow: 'POST' } });
   const body = await request.text();
   try {
-    const result = await enqueueWidgetEvent(await parseKommoWidgetRequest(JSON.parse(body)));
+    const result = await enqueueWidgetEvent(await parseKommoWidgetRequest(decodeKommoWidgetBody(body)));
     return Response.json({ status: 'success', ...result }, { status: 200, headers });
   } catch (error) {
     const diagnostic = error instanceof Error ? error : new Error('Unknown error');
