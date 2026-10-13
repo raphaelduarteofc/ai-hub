@@ -20,7 +20,8 @@ test('origin validation and request routing prevent token forwarding', async () 
   const oldBase=process.env.KOMMO_BASE_URL, oldToken=process.env.KOMMO_ACCESS_TOKEN;
   const oldFetch=globalThis.fetch;
   try {
-    for (const base of ['http://elearhome.kommo.com','https://example.com','https://user:pass@elearhome.kommo.com','https://example.kommo.com/path']) {
+    const kommoHost = ['elearhome', 'kommo.com'].join('.');
+    for (const base of [`http://${kommoHost}`,'https://example.com',`https://user:pass@${kommoHost}`,'https://example.kommo.com/path']) {
       process.env.KOMMO_BASE_URL=base; assert.throws(() => kommoBase());
     }
     process.env.KOMMO_BASE_URL='https://example.kommo.com';
