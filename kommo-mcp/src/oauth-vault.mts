@@ -15,14 +15,14 @@ export async function exchange(base:string,grant:Record<string,string>,fetcher=f
   if(!r.ok) throw new Error(`Kommo token exchange failed HTTP ${r.status}`);return validateTokens(await r.json());
 }
 export async function addState(state:string,session:string,expiresAt:number) {
-  await database().sql`INSERT INTO elear_oauth_states(state_hash,session_hash,expires_at) VALUES (${digest(state)},${digest(session)},${new Date(expiresAt)})`;
+  await database().pool.query('INSERT INTO elear_private.oauth_states(state_hash,session_hash,expires_at) VALUES ($1,$2,$3)',[digest(state),digest(session),new Date(expiresAt)]);
 }
 export async function consumeState(state:string,session:string) {
-  const rows=await database().sql`DELETE FROM elear_oauth_states WHERE state_hash=${digest(state)} AND session_hash=${digest(session)} AND expires_at>now() RETURNING state_hash`;
-  return rows.length===1;
+  const result=await database().pool.query('DELETE FROM elear_private.oauth_states WHERE state_hash=$1 AND session_hash=$2 AND expires_at>now() RETURNING state_hash',[digest(state),digest(session)]);
+  return result.rows.length===1;
 }
 export async function saveTokens(base:string,tokens:TokenPair) {
-  await database().sql`INSERT INTO elear_oauth_tokens(account_origin,account_id,encrypted_tokens,expires_at) VALUES (${base},${expectedAccount()},${seal(tokens)},${new Date(Date.now()+tokens.expires_in*1000)}) ON CONFLICT(account_origin) DO UPDATE SET account_id=EXCLUDED.account_id,encrypted_tokens=EXCLUDED.encrypted_tokens,expires_at=EXCLUDED.expires_at,updated_at=now()`;
+  await database().pool.query('INSERT INTO elear_private.oauth_tokens(account_origin,account_id,encrypted_tokens,expires_at) VALUES ($1,$2,$3,$4) ON CONFLICT(account_origin) DO UPDATE SET account_id=EXCLUDED.account_id,encrypted_tokens=EXCLUDED.encrypted_tokens,expires_at=EXCLUDED.expires_at,updated_at=now()',[base,expectedAccount(),seal(tokens),new Date(Date.now()+tokens.expires_in*1000)]);
 }
 export async function currentToken(base:string,pool:PoolLike=database().pool,fetcher=fetch) {
   const c=await pool.connect();
@@ -30,14 +30,14 @@ export async function currentToken(base:string,pool:PoolLike=database().pool,fet
     await c.query('BEGIN');
     await c.query("SET LOCAL lock_timeout = '5s'");
     await c.query("SET LOCAL statement_timeout = '20s'");
-    const r=await c.query('SELECT account_id,encrypted_tokens,expires_at FROM elear_oauth_tokens WHERE account_origin=$1 FOR UPDATE',[base]);
+    const r=await c.query('SELECT account_id,encrypted_tokens,expires_at FROM elear_private.oauth_tokens WHERE account_origin=$1 FOR UPDATE',[base]);
     if(r.rows.length!==1||String(r.rows[0].account_id)!==expectedAccount()) throw new Error('Kommo authorization missing or account mismatch');
     let t=validateTokens(unseal(String(r.rows[0].encrypted_tokens)));
     const expiration=new Date(String(r.rows[0].expires_at)).getTime();
     if(!Number.isFinite(expiration)) throw new Error('Invalid token expiration');
     if(expiration<=Date.now()+60000) {
       t=await exchange(base,{grant_type:'refresh_token',refresh_token:t.refresh_token},fetcher);
-      await c.query('UPDATE elear_oauth_tokens SET encrypted_tokens=$1,expires_at=$2,updated_at=now() WHERE account_origin=$3',[seal(t),new Date(Date.now()+t.expires_in*1000),base]);
+      await c.query('UPDATE elear_private.oauth_tokens SET encrypted_tokens=$1,expires_at=$2,updated_at=now() WHERE account_origin=$3',[seal(t),new Date(Date.now()+t.expires_in*1000),base]);
     }
     await c.query('COMMIT');return t.access_token;
   } catch(e) { await c.query('ROLLBACK');throw e; } finally {c.release();}

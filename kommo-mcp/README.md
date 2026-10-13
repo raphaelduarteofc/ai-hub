@@ -15,7 +15,7 @@ OAuth state expires after ten minutes, is bound to a secure browser cookie and c
 
 ## Deployment requirements
 
-This folder is the Netlify base directory. It uses @netlify/database with migrations in netlify/database/migrations. Database availability and billing must be checked before deployment. Do not replace an existing production deploy directly: this version requires a prepared database and new OAuth authorization, and does not migrate an older Blobs store automatically.
+This folder is the Netlify base directory. It uses a dedicated Supabase PostgreSQL project with a private schema and RLS. DATABASE_URL must be set server-side, with a provider CA certificate in DATABASE_CA_CERT when required. SQL migration files live in database/migrations and are applied to the dedicated test database after access and cost verification. No Netlify Database is auto-provisioned. Do not replace an existing production deploy directly: this version requires a prepared database and new OAuth authorization, and does not migrate an older Blobs store automatically.
 
 MCP tools expose read-only allowlisted resources. Outbound messages, orders, visits and Salesbot are not implemented here. The custom MCP transport still requires client compatibility validation.
 
