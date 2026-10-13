@@ -27,12 +27,18 @@ The custom MCP transport still needs protocol compatibility and input/Origin har
 
 ## Verified evidence
 13 local tests passed; npm run typecheck passed.
+2026-10-13 — OAuth/configuration recovery completed for the isolated test integration:
+- Action: corrected the missing production runtime variable `KOMMO_ACCOUNT_ID` and redeployed the published site.
+- Evidence: Netlify deploy completed successfully; the deployed function set includes health, mcp, oauth-start, oauth-callback and readiness.
+- Evidence: a fresh OAuth flow reached the Kommo consent screen for ELEAR Home - Varejo; the hosted oauth-callback invocation completed without an error log.
+- Evidence: the isolated Supabase vault contains one encrypted authorization row for account `34040199`, with a future expiration and an updated timestamp from the OAuth callback. The encrypted token payload was not read.
+- Blocker: authenticated readiness and authenticated CRM reads still require using the configured MCP bearer token; the token must not be exposed or copied into this repository.
+- Fallback applied: public endpoint checks were run without credentials and correctly returned 401; local full suite was rerun with the required loopback permission.
+- Debt: hosted concurrent refresh, revocation, account mismatch and real authenticated CRM reads remain unvalidated.
+- Next: connect a trusted MCP client using the already-configured secret, then run read-only account/users/pipelines checks.
 Netlify test project elear-sales-brain-test is Git-linked to this working branch, base kommo-mcp, publish public, functions netlify/functions.
 Five functions deployed: health, mcp, oauth-start, oauth-callback, readiness.
-Authenticated GET /.netlify/functions/readiness returned:
-databaseConnected=true, schemaReady=true,
-missing=[KOMMO_ACCOUNT_ID,KOMMO_CLIENT_ID,KOMMO_CLIENT_SECRET], ready=false.
-This was before the latest credential UI changes. Re-check current configuration.
+Authenticated GET /.netlify/functions/readiness previously returned missing configuration; that result is stale because it predates the account-ID correction and redeploy.
 Unauthenticated readiness returned 401.
 Health returned 200, read-only.
 Hosted multi-instance OAuth refresh concurrency has NOT been proved. Local database test demonstrates one-use state and sequential refresh persistence, not distributed locking.
@@ -48,7 +54,7 @@ Production here means the published context of the isolated test project, not li
 Do not supply these secrets to deploy previews or agent runner contexts.
 KOMMO_CLIENT_ID has been saved through the UI for the new isolated test integration.
 KOMMO_CLIENT_SECRET was saved by the user, but last verified metadata still said "not marked as secret". Verify and correct its secret flag first.
-KOMMO_ACCOUNT_ID remains unknown/unconfigured. Get the actual CRM account ID from an authorized source; do not confuse it with user ID, pipeline ID, or integration UUID.
+KOMMO_ACCOUNT_ID is now configured for the isolated test deployment from the authorized Kommo account response. Do not confuse it with the Kommo user ID or integration UUID.
 The existing ELEAR Home MCP integration points to the older kommo-mcp service. Preserve it.
 A separate ELEAR Sales Brain — Teste integration was created with the test callback.
 Do not rotate existing credentials or move callbacks without evaluating existing authorizations.
@@ -63,8 +69,7 @@ A move to Codex does not transfer connector sessions, credentials or this entire
 ## Next work, in order
 1. Read repository instructions, preserve user changes, verify branch/head and available access.
 2. Check secret metadata only; correct KOMMO_CLIENT_SECRET secret flag and Production-only context. Verify current credential is the intended current key.
-3. Obtain correct KOMMO_ACCOUNT_ID. Redeploy after environment changes; deployed functions freeze env values.
-4. Verify readiness, then run OAuth through /oauth/start and validate the account before token storage. Do not reuse an expired or pasted authorization code.
+3. Verify readiness with the configured MCP token, then run OAuth through /oauth/start and validate the account before token storage. Do not reuse an expired or pasted authorization code.
 5. Test account/users/pipelines reads, expiry and refresh. Exercise actual hosted concurrency, rollback, revocation and account mismatch.
 6. Harden MCP transport; add runtime validation and sanitized error reporting.
 7. Implement Salesbot widget_request receiver using verified official JWT contract, fast acknowledgment, durable deduplication and transactional job queue.
