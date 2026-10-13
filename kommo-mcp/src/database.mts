@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { supabaseCA } from './supabase-ca.mts';
 import { requiredEnv, env } from './config.mts';
 let pool: pg.Pool | undefined;
 export function database() {
@@ -12,7 +13,7 @@ export function database() {
     // SSL options must not silently disable verification.
     for (const key of ['sslmode','sslcert','sslkey','sslrootcert']) url.searchParams.delete(key);
     pool = new pg.Pool({ connectionString: url.href, max: 2, connectionTimeoutMillis: 10000,
-      idleTimeoutMillis: 10000, statement_timeout: 15000, ssl: { rejectUnauthorized: true, ca: env('DATABASE_CA_CERT') || undefined } });
+      idleTimeoutMillis: 10000, statement_timeout: 15000, ssl: { rejectUnauthorized: true, ca: env('DATABASE_CA_CERT') || supabaseCA } });
     pool.on('error', () => console.error('database_idle_connection_error'));
   }
   return { pool };
