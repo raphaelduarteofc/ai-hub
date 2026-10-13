@@ -12,7 +12,7 @@ export function database() {
     // SSL options must not silently disable verification.
     for (const key of ['sslmode','sslcert','sslkey','sslrootcert']) url.searchParams.delete(key);
     pool = new pg.Pool({ connectionString: url.href, max: 2, connectionTimeoutMillis: 10000,
-      idleTimeoutMillis: 10000, ssl: { rejectUnauthorized: true, ca: env('DATABASE_CA_CERT') || undefined } });
+      idleTimeoutMillis: 10000, statement_timeout: 15000, ssl: { rejectUnauthorized: true, ca: env('DATABASE_CA_CERT') || undefined } });
     pool.on('error', () => console.error('database_idle_connection_error'));
   }
   return { pool };
