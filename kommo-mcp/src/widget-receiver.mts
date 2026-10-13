@@ -3,14 +3,15 @@ import { jwtVerify } from 'jose';
 import { requiredEnv } from './config.mts';
 import { database } from './database.mts';
 
-type WidgetEvent = { event_id: string; conversation_id: string; payload: unknown };
+type WidgetEvent = { event_id: string; conversation_id: string; payload: unknown; return_url: string };
 
 export function parseWidgetEvent(value: unknown): WidgetEvent {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid widget event');
   const event = value as Partial<WidgetEvent>;
   if (typeof event.event_id !== 'string' || !event.event_id || event.event_id.length > 200) throw new Error('Invalid event_id');
   if (typeof event.conversation_id !== 'string' || !event.conversation_id || event.conversation_id.length > 200) throw new Error('Invalid conversation_id');
-  return { event_id: event.event_id, conversation_id: event.conversation_id, payload: event.payload ?? {} };
+  if (typeof event.return_url !== 'string' || !event.return_url) throw new Error('Invalid return_url');
+  return { event_id: event.event_id, conversation_id: event.conversation_id, payload: event.payload ?? {}, return_url: event.return_url };
 }
 
 export async function parseKommoWidgetRequest(value: unknown): Promise<WidgetEvent> {
@@ -24,21 +25,26 @@ export async function parseKommoWidgetRequest(value: unknown): Promise<WidgetEve
   if (typeof payload.entity_id !== 'string' && typeof payload.entity_id !== 'number') throw new Error('Invalid widget identity');
   if (typeof payload.entity_type !== 'string') throw new Error('Invalid widget identity');
   const identity = `${payload.entity_type}:${payload.entity_id}`;
+  const returnUrl = new URL(request.return_url);
+  const baseUrl = new URL(requiredEnv('KOMMO_BASE_URL'));
+  if (returnUrl.protocol !== 'https:' || returnUrl.origin !== baseUrl.origin || !returnUrl.pathname.includes('/api/v4/')) {
+    throw new Error('Invalid return_url');
+  }
   const eventId = `kommo:${createHash('sha256').update(request.token).digest('hex')}`;
-  return { event_id: eventId, conversation_id: identity, payload: request.data ?? {} };
+  return { event_id: eventId, conversation_id: identity, payload: request.data ?? {}, return_url: returnUrl.toString() };
 }
 
 export async function enqueueWidgetEvent(event: WidgetEvent) {
   const result = await database().pool.query(
     `WITH inserted_event AS (
-       INSERT INTO elear_private.widget_events(event_id, conversation_id, payload)
-       VALUES ($1,$2,$3) ON CONFLICT (event_id) DO NOTHING RETURNING event_id
+       INSERT INTO elear_private.widget_events(event_id, conversation_id, payload, return_url)
+       VALUES ($1,$2,$3,$4) ON CONFLICT (event_id) DO NOTHING RETURNING event_id
      )
-     INSERT INTO elear_private.agent_jobs(event_id, conversation_id, payload)
-     SELECT event_id, $2, $3 FROM inserted_event
+     INSERT INTO elear_private.agent_jobs(event_id, conversation_id, payload, return_url)
+     SELECT event_id, $2, $3, $4 FROM inserted_event
      ON CONFLICT (event_id) DO NOTHING
      RETURNING id`,
-    [event.event_id, event.conversation_id, JSON.stringify(event.payload)],
+    [event.event_id, event.conversation_id, JSON.stringify(event.payload), event.return_url],
   );
   return { accepted: true, duplicate: result.rows.length === 0 };
 }

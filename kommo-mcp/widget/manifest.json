@@ -1,16 +1,29 @@
 {
   "widget": {
-    "name": "ELEAR Sales Brain — Teste",
+    "name": "widget.name",
     "short_name": "ELEAR Sales Brain",
-    "description": "Widget isolado para testar a entrada Salesbot do ELEAR Sales Brain.",
-    "version": "1.0.0",
+    "short_description": "widget.short_description",
+    "description": "widget.description",
+    "version": "1.0.1",
     "interface_version": 2,
     "locale": ["pt"],
     "init_once": false,
-    "installation": false,
+    "installation": true,
     "support": { "link": "https://elear-sales-brain-test.netlify.app/health" }
   },
   "locations": ["salesbot_designer"],
+  "settings": {
+    "account_id": {
+      "name": "settings.account_id",
+      "type": "text",
+      "default_value": "34040199",
+      "required": true
+    }
+  },
+  "tour": {
+    "is_tour": true,
+    "tour_description": "widget.tour_description"
+  },
   "salesbot_designer": {
     "elear_sales_brain_request": {
       "name": "ELEAR Sales Brain — enviar evento",

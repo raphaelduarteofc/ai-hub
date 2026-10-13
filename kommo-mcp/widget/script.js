@@ -1,36 +1,43 @@
-(function () {
+define([], function () {
   'use strict';
 
-  function json(value) {
-    return JSON.stringify(value);
-  }
+  return function ElearSalesBrainWidget() {
+    this.callbacks = {
+      init: function () { return true; },
+      render: function () { return true; },
+      bind_actions: function () { return true; },
+      settings: function () { return true; },
 
-  window.onSalesbotDesignerSave = function (_handlerCode, params) {
-    var endpoint = params && params.endpoint ? params.endpoint : '';
-    return json([{
-      question: [{
-        handler: 'widget_request',
-        params: {
-          url: endpoint,
-          data: {
-            message: '{{message_text}}',
-            lead_id: '{{lead.id}}',
-            contact_name: '{{contact.name}}',
-            source: 'elear-sales-brain-test'
-          }
+      onSalesbotDesignerSave: function (_handlerCode, params) {
+        var endpoint = params && params.endpoint;
+        if (!endpoint) {
+          return JSON.stringify([]);
         }
-      }, {
-        handler: 'conditions',
-        conditions: [{
-          term1: '{{json.status}}',
-          term2: 'success',
-          operation: '='
-        }],
-        result: [{ handler: 'exits', params: { value: 'success' } }]
-      }, {
-        handler: 'exits',
-        params: { value: 'fail' }
-      }]
-    }]);
+
+        return JSON.stringify([
+          {
+            question: [
+              {
+                handler: 'widget_request',
+                params: {
+                  url: endpoint,
+                  data: {
+                    message: '{{message_text}}',
+                    lead_id: '{{lead.id}}',
+                    contact_name: '{{contact.name}}',
+                    source: 'elear-sales-brain-test'
+                  }
+                }
+              }
+            ],
+            require: []
+          }
+        ]);
+      },
+
+      destroy: function () {}
+    };
+
+    return this;
   };
-})();
+});
