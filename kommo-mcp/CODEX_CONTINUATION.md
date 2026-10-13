@@ -26,7 +26,7 @@ TLS certificate validation remains enabled. src/supabase-ca.mts bundles the publ
 The custom MCP transport still needs protocol compatibility and input/Origin hardening; do not claim a complete MCP implementation.
 
 ## Verified evidence
-13 local tests passed; npm run typecheck passed.
+15 local tests passed; npm run typecheck passed.
 2026-10-13 — OAuth/configuration recovery completed for the isolated test integration:
 - Action: corrected the missing production runtime variable `KOMMO_ACCOUNT_ID` and redeployed the published site.
 - Evidence: Netlify deploy completed successfully; the deployed function set includes health, mcp, oauth-start, oauth-callback and readiness.
@@ -38,7 +38,7 @@ The custom MCP transport still needs protocol compatibility and input/Origin har
 - Next: connect a trusted MCP client using the already-configured secret, then run read-only account/users/pipelines checks.
 2026-10-13 — Receiver preparation:
 - Action: added an inactive-by-default `widget-request` receiver using Kommo's documented JWT (`token`, `data`, `return_url`) contract, account validation, atomic deduplication and a transactional queue schema.
-- Evidence: `npm run typecheck` passed and the full local suite passed 13/13.
+- Evidence: `npm run typecheck` passed and the full local suite passed 15/15, including JWT acceptance and account-mismatch tests.
 - Blocker: the receiver endpoint and database migration remain local and are not deployed; the isolated Kommo widget still needs to be configured with the endpoint.
 - Next: validate the official payload/signature contract, then apply the migration in the isolated database and run signed test events.
 Netlify test project elear-sales-brain-test is Git-linked to this working branch, base kommo-mcp, publish public, functions netlify/functions.

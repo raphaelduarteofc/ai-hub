@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { jwtVerify } from 'jose';
 import { requiredEnv } from './config.mts';
 import { database } from './database.mts';
@@ -23,7 +24,8 @@ export async function parseKommoWidgetRequest(value: unknown): Promise<WidgetEve
   if (typeof payload.entity_id !== 'string' && typeof payload.entity_id !== 'number') throw new Error('Invalid widget identity');
   if (typeof payload.entity_type !== 'string') throw new Error('Invalid widget identity');
   const identity = `${payload.entity_type}:${payload.entity_id}`;
-  return { event_id: `${identity}:${payload.client_uid ?? 'unknown'}`, conversation_id: identity, payload: request.data ?? {} };
+  const eventId = `kommo:${createHash('sha256').update(request.token).digest('hex')}`;
+  return { event_id: eventId, conversation_id: identity, payload: request.data ?? {} };
 }
 
 export async function enqueueWidgetEvent(event: WidgetEvent) {
