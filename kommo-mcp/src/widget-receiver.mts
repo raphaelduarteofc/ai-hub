@@ -1,19 +1,8 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { jwtVerify } from 'jose';
 import { requiredEnv } from './config.mts';
 import { database } from './database.mts';
 
 type WidgetEvent = { event_id: string; conversation_id: string; payload: unknown };
-
-function signature(body: string) {
-  return createHmac('sha256', requiredEnv('WIDGET_SIGNING_SECRET')).update(body).digest('hex');
-}
-
-export function verifyWidgetSignature(body: string, supplied: string | null) {
-  if (!supplied) return false;
-  const expected = Buffer.from(signature(body), 'utf8');
-  const actual = Buffer.from(supplied.trim(), 'utf8');
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
 
 export function parseWidgetEvent(value: unknown): WidgetEvent {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid widget event');
@@ -21,6 +10,20 @@ export function parseWidgetEvent(value: unknown): WidgetEvent {
   if (typeof event.event_id !== 'string' || !event.event_id || event.event_id.length > 200) throw new Error('Invalid event_id');
   if (typeof event.conversation_id !== 'string' || !event.conversation_id || event.conversation_id.length > 200) throw new Error('Invalid conversation_id');
   return { event_id: event.event_id, conversation_id: event.conversation_id, payload: event.payload ?? {} };
+}
+
+export async function parseKommoWidgetRequest(value: unknown): Promise<WidgetEvent> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid widget request');
+  const request = value as { token?: unknown; data?: unknown; return_url?: unknown };
+  if (typeof request.token !== 'string' || typeof request.return_url !== 'string') throw new Error('Invalid widget request');
+  const secret = new TextEncoder().encode(requiredEnv('KOMMO_CLIENT_SECRET'));
+  const { payload } = await jwtVerify(request.token, secret, { algorithms: ['HS256'] });
+  const account = requiredEnv('KOMMO_ACCOUNT_ID');
+  if (String(payload.account_id) !== account) throw new Error('Widget account mismatch');
+  if (typeof payload.entity_id !== 'string' && typeof payload.entity_id !== 'number') throw new Error('Invalid widget identity');
+  if (typeof payload.entity_type !== 'string') throw new Error('Invalid widget identity');
+  const identity = `${payload.entity_type}:${payload.entity_id}`;
+  return { event_id: `${identity}:${payload.client_uid ?? 'unknown'}`, conversation_id: identity, payload: request.data ?? {} };
 }
 
 export async function enqueueWidgetEvent(event: WidgetEvent) {
