@@ -20,13 +20,13 @@ test('origin validation and request routing prevent token forwarding', async () 
   const oldBase=process.env.KOMMO_BASE_URL, oldToken=process.env.KOMMO_ACCESS_TOKEN;
   const oldFetch=globalThis.fetch;
   try {
-    for (const base of ['http://elearhome.kommo.com','https://example.com','https://user:pass@elearhome.kommo.com','https://elearhome.kommo.com/path']) {
+    for (const base of ['http://elearhome.kommo.com','https://example.com','https://user:pass@elearhome.kommo.com','https://example.kommo.com/path']) {
       process.env.KOMMO_BASE_URL=base; assert.throws(() => kommoBase());
     }
-    process.env.KOMMO_BASE_URL='https://elearhome.kommo.com';
+    process.env.KOMMO_BASE_URL='https://example.kommo.com';
     process.env.KOMMO_ACCESS_TOKEN='synthetic-test-token';
     globalThis.fetch=async (input, options) => {
-      assert.equal(String(input),'https://elearhome.kommo.com/api/v4/leads/pipelines');
+      assert.equal(String(input),'https://example.kommo.com/api/v4/leads/pipelines');
       assert.equal(options?.redirect,'error');
       return Response.json({_embedded:{pipelines:[]}});
     };
