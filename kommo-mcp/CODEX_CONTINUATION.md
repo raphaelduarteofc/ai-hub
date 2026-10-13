@@ -36,6 +36,11 @@ The custom MCP transport still needs protocol compatibility and input/Origin har
 - Fallback applied: public endpoint checks were run without credentials and correctly returned 401; local full suite was rerun with the required loopback permission.
 - Debt: hosted concurrent refresh, revocation, account mismatch and real authenticated CRM reads remain unvalidated.
 - Next: connect a trusted MCP client using the already-configured secret, then run read-only account/users/pipelines checks.
+2026-10-13 — Receiver preparation:
+- Action: added an inactive-by-default `widget-request` receiver, HMAC signature verification, event validation, atomic deduplication and a transactional queue schema.
+- Evidence: `npm run typecheck` passed and the full local suite passed 13/13.
+- Blocker: the official Kommo JWT payload contract and signing secret are not yet configured; migration and receiver remain local and are not deployed.
+- Next: validate the official payload/signature contract, then apply the migration in the isolated database and run signed test events.
 Netlify test project elear-sales-brain-test is Git-linked to this working branch, base kommo-mcp, publish public, functions netlify/functions.
 Five functions deployed: health, mcp, oauth-start, oauth-callback, readiness.
 Authenticated GET /.netlify/functions/readiness previously returned missing configuration; that result is stale because it predates the account-ID correction and redeploy.
