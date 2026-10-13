@@ -35,3 +35,5 @@ test('local database consumes state once and persists the refreshed token',async
   }
 });
 
+
+// Deployment trigger: environment-only verification.
