@@ -23,5 +23,15 @@ test('local database consumes state once and persists the refreshed token',async
     const tokens=[await currentToken(base,pool,fetcher),await currentToken(base,pool,fetcher)];
     assert.deepEqual(tokens,['new','new']);assert.equal(exchanges,1);
     process.env.KOMMO_ACCOUNT_ID='999';await assert.rejects(currentToken(base,pool,fetcher),/account mismatch/);
-  } finally {if(pool)await pool.end();await db.stop();}
+  } finally {
+    if(pool) await pool.end();
+    try {
+      await db.stop();
+    } catch(error) {
+      // NetlifyDB can close its local server during pool shutdown; cleanup
+      // should not turn a passing database assertion into a failed test.
+      if(!(error instanceof Error && 'code' in error && error.code === 'ERR_SERVER_NOT_RUNNING')) throw error;
+    }
+  }
 });
+
