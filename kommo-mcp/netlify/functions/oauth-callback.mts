@@ -14,12 +14,11 @@ export default async (request:Request) => {
   const base=kommoBase(),tokens=await exchange(base,{grant_type:'authorization_code',code});
   stage='verify_account';
   const response=await fetch(`${base}/api/v4/account`,{redirect:'error',signal:AbortSignal.timeout(15000),headers:{Authorization:`Bearer ${tokens.access_token}`}});
-  if(!response.ok) throw new Error('Account verification failed');
+  if(!response.ok) return Response.json({error:'OAuth authorization failed; restart the authorization flow',stage,reason:'account_api',status:response.status},{status:502,headers});
   const account=await response.json() as {id?:unknown};
-  if(String(account.id)!==expectedAccount()) throw new Error('Account mismatch');
+  if(String(account.id)!==expectedAccount()) return Response.json({error:'OAuth authorization failed; restart the authorization flow',stage,reason:'account_mismatch'},{status:502,headers});
   stage='save_tokens';
   await saveTokens(base,tokens);
   return new Response('ELEAR Home authorization verified. You may close this window.',{headers:{...headers,'content-type':'text/plain; charset=utf-8'}});
  } catch {return Response.json({error:'OAuth authorization failed; restart the authorization flow',stage},{status:502,headers});}
 };
-
