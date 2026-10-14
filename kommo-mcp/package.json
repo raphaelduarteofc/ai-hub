@@ -1,0 +1,24 @@
+{
+  "name": "kommo-dot-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test",
+    "typecheck": "tsc --noEmit",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "jose": "^6.2.12",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@netlify/database-dev": "^1.0.1",
+    "@netlify/functions": "^3.0.0",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0"
+  }
+}

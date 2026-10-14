@@ -1,0 +1,40 @@
+{
+  "widget": {
+    "name": "widget.name",
+    "short_name": "ELEAR Sales Brain",
+    "short_description": "widget.short_description",
+    "description": "widget.description",
+    "version": "1.0.1",
+    "interface_version": 2,
+    "locale": ["pt"],
+    "init_once": false,
+    "installation": true,
+    "support": { "link": "https://elear-sales-brain-test.netlify.app/health" }
+  },
+  "locations": ["salesbot_designer"],
+  "settings": {
+    "account_id": {
+      "name": "settings.account_id",
+      "type": "text",
+      "default_value": "34040199",
+      "required": true
+    }
+  },
+  "tour": {
+    "is_tour": true,
+    "tour_description": "widget.tour_description"
+  },
+  "salesbot_designer": {
+    "elear_sales_brain_request": {
+      "name": "ELEAR Sales Brain — enviar evento",
+      "settings": {
+        "endpoint": {
+          "name": "Endpoint do receiver",
+          "default_value": "https://elear-sales-brain-test.netlify.app/widget-request",
+          "type": "url",
+          "manual": true
+        }
+      }
+    }
+  }
+}

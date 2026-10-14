@@ -1,0 +1,11 @@
+{
+  "settings": {
+    "account_id": "ID da conta Kommo"
+  },
+  "widget": {
+    "name": "ELEAR Sales Brain — Teste",
+    "short_description": "Entrada Salesbot isolada para teste do ELEAR Sales Brain.",
+    "description": "Widget isolado para testar a entrada Salesbot do ELEAR Sales Brain.",
+    "tour_description": "Teste isolado da entrada Salesbot do ELEAR Sales Brain."
+  }
+}
