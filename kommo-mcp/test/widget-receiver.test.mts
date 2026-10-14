@@ -25,6 +25,10 @@ test('accepts Kommo widget JWT and derives a stable event id without storing the
   assert.equal(event.conversation_id, 'lead:77');
   assert.match(event.event_id, /^kommo:[a-f0-9]{64}$/);
   assert.deepEqual(event.payload, { message: 'hello' });
+  const retry = await parseKommoWidgetRequest({ token, data: { message: 'hello' }, return_url: event.return_url });
+  assert.equal(retry.event_id, event.event_id);
+  const nextTurn = await parseKommoWidgetRequest({ token, data: { message: 'Sala e 3 quartos' }, return_url: event.return_url });
+  assert.notEqual(nextTurn.event_id, event.event_id);
 });
 
 test('rejects a widget JWT for another account', async () => {

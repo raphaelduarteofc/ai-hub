@@ -46,8 +46,13 @@ export async function parseKommoWidgetRequest(value: unknown): Promise<WidgetEve
   if (returnUrl.protocol !== 'https:' || returnUrl.origin !== baseUrl.origin || !returnUrl.pathname.includes('/api/v4/')) {
     throw new Error('Invalid return_url');
   }
-  const eventId = `kommo:${createHash('sha256').update(request.token).digest('hex')}`;
-  return { event_id: eventId, conversation_id: identity, payload: request.data ?? {}, return_url: returnUrl.toString() };
+  // Authentication tokens can be reused across multiple turns. Including the
+  // callback and data prevents different replies with the same JWT colliding.
+  const data = request.data ?? {};
+  const eventId = `kommo:${createHash('sha256')
+    .update(request.token).update('\0').update(returnUrl.toString())
+    .update('\0').update(JSON.stringify(data)).digest('hex')}`;
+  return { event_id: eventId, conversation_id: identity, payload: data, return_url: returnUrl.toString() };
 }
 
 export async function enqueueWidgetEvent(event: WidgetEvent) {
