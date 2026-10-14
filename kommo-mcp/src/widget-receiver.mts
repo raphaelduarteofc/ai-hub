@@ -35,7 +35,7 @@ export async function parseKommoWidgetRequest(value: unknown): Promise<WidgetEve
   const request = value as { token?: unknown; data?: unknown; return_url?: unknown };
   if (typeof request.token !== 'string' || typeof request.return_url !== 'string') throw new Error('Invalid widget request');
   const secret = new TextEncoder().encode(requiredEnv('KOMMO_CLIENT_SECRET'));
-  const { payload } = await jwtVerify(request.token, secret, { algorithms: ['HS256'] });
+  const { payload } = await jwtVerify(request.token, secret, { algorithms: ['HS256', 'HS384', 'HS512'] });
   const account = requiredEnv('KOMMO_ACCOUNT_ID');
   if (String(payload.account_id) !== account) throw new Error('Widget account mismatch');
   if (typeof payload.entity_id !== 'string' && typeof payload.entity_id !== 'number') throw new Error('Invalid widget identity');

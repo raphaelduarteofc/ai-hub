@@ -35,3 +35,18 @@ test('rejects a widget JWT for another account', async () => {
     .setProtectedHeader({ alg: 'HS256' }).sign(new TextEncoder().encode('widget-secret'));
   await assert.rejects(parseKommoWidgetRequest({ token, data: {}, return_url: 'https://example.com' }), /Widget account mismatch/);
 });
+
+test('verifies HMAC variants and still rejects the wrong signing secret', async () => {
+  process.env.KOMMO_CLIENT_SECRET = 'widget-secret';
+  process.env.KOMMO_ACCOUNT_ID = '34040199';
+  const base = `https://${['elearhome', 'kommo.com'].join('.')}`;
+  process.env.KOMMO_BASE_URL = base;
+  for (const alg of ['HS384', 'HS512']) {
+    const claims = { account_id: 34040199, entity_type: 'lead', entity_id: 77 };
+    const valid = await new SignJWT(claims).setProtectedHeader({ alg }).sign(new TextEncoder().encode('widget-secret'));
+    const invalid = await new SignJWT(claims).setProtectedHeader({ alg }).sign(new TextEncoder().encode('wrong-secret'));
+    const request = { token: valid, return_url: `${base}/api/v4/salesbot/1/continue/2` };
+    assert.equal((await parseKommoWidgetRequest(request)).conversation_id, 'lead:77');
+    await assert.rejects(parseKommoWidgetRequest({ ...request, token: invalid }), /signature verification failed/);
+  }
+});
