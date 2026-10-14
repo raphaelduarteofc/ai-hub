@@ -27,8 +27,11 @@ test('completes a multi-turn discovery without forgetting prior answers', () => 
   }
   assert.equal(result.mode, 'handoff');
   assert.equal(result.reason, 'discovery_complete');
-  assert.match(result.message, /varejo.*Sala.*Rio de Janeiro.*30 m².*próximo mês/);
-  assert.match(result.message, /não confirma orçamento/);
+  assert.equal(result.state.operation, 'varejo');
+  assert.equal(result.state.environment, 'Sala');
+  assert.equal(result.state.city, 'Rio de Janeiro');
+  assert.equal(result.state.area, '30 m² (informado pelo cliente)');
+  assert.equal(result.state.timing, 'No próximo mês');
 });
 
 test('unknown area is not invented and invalid area does not advance', () => {
@@ -46,4 +49,29 @@ test('manual restart clears previous context and stop never promises a booking',
   const restarted = decideSalesAgent({ message: '', state: stopped.state });
   assert.equal(restarted.state.finished, undefined);
   assert.equal(restarted.state.awaiting, 'operation');
+});
+
+test('home purchase with installation remains retail, not a standalone service', () => {
+  let result = decideSalesAgent({ message: 'piso laminado com instalação' });
+  assert.equal(result.state.operation, undefined);
+  result = decideSalesAgent({ message: 'Sala e 3 quartos', state: { ...result.state, operation: 'servicos', awaiting: 'environment' } });
+  const corrected = decideSalesAgent({ message: 'Para minha casa', state: { ...result.state, awaiting: 'city' } });
+  assert.equal(corrected.state.operation, 'varejo');
+  assert.equal(corrected.state.environment, 'Sala e 3 quartos');
+  assert.equal(corrected.state.city, undefined);
+  assert.equal(corrected.state.awaiting, 'city');
+});
+
+test('explicit installation-only intent is classified as a service', () => {
+  const result = decideSalesAgent({ message: 'Preciso somente da instalação, já comprei o piso' });
+  assert.equal(result.state.operation, 'servicos');
+});
+
+test('customer completion message contains no internal operation summary', () => {
+  let result = decideSalesAgent({ message: '' });
+  for (const message of ['Para minha casa', 'Sala', 'Rio de Janeiro', '30 m²', 'No próximo mês']) {
+    result = decideSalesAgent({ message, state: result.state });
+  }
+  assert.equal(result.reason, 'discovery_complete');
+  assert.doesNotMatch(result.message, /operação|servicos|varejo|atacado|triagem/);
 });

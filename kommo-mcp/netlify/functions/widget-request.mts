@@ -1,11 +1,15 @@
 import { decodeKommoWidgetBody, enqueueWidgetEvent, parseKommoWidgetRequest } from '../../src/widget-receiver.mts';
+import { processAgentJob } from './agent-worker.mts';
+import type { Context } from '@netlify/functions';
 
-export default async (request: Request) => {
+export default async (request: Request, context: Context) => {
   const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
   if (request.method !== 'POST') return Response.json({ error: 'POST only' }, { status: 405, headers: { ...headers, Allow: 'POST' } });
   const body = await request.text();
   try {
-    const result = await enqueueWidgetEvent(await parseKommoWidgetRequest(decodeKommoWidgetBody(body)));
+    const event = await parseKommoWidgetRequest(decodeKommoWidgetBody(body));
+    const result = await enqueueWidgetEvent(event);
+    if (!result.duplicate) context.waitUntil(processAgentJob(event.conversation_id));
     return Response.json({ status: 'success', ...result }, { status: 200, headers });
   } catch (error) {
     const diagnostic = error instanceof Error ? error : new Error('Unknown error');
