@@ -1,6 +1,7 @@
 import { database } from '../../src/database.mts';
-import { env } from '../../src/config.mts';
+import { env, requiredEnv } from '../../src/config.mts';
 import { decideSalesAgent } from '../../src/sales-agent.mts';
+import { currentToken } from '../../src/oauth-vault.mts';
 
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
 
@@ -61,9 +62,12 @@ export async function processAgentJob() {
 
   try {
     const decision = decideSalesAgent({ message: messageFromPayload(claimedJob.payload) });
+    const accessToken = await currentToken(new URL(requiredEnv('KOMMO_BASE_URL')).origin);
     const callback = await fetch(claimedJob.return_url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      redirect: 'error',
+      signal: AbortSignal.timeout(15000),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ data: { message: decision.message, mode: decision.mode, reason: decision.reason } }),
     });
     if (!callback.ok) throw new Error(`Kommo callback HTTP ${callback.status}`);
@@ -73,6 +77,10 @@ export async function processAgentJob() {
     );
     return Response.json({ processed: true, event_id: claimedJob.event_id, mode: decision.mode }, { status: 200, headers });
   } catch (error) {
+    console.error('agent_job_failed', {
+      job_id: claimedJob.id,
+      reason: error instanceof Error && /^Kommo callback HTTP \d+$/.test(error.message) ? error.message : 'processing_or_authorization_failed',
+    });
     await db.query(
       `UPDATE elear_private.agent_jobs
           SET status = CASE WHEN attempts >= 3 THEN 'failed' ELSE 'queued' END,
