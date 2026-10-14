@@ -1,6 +1,6 @@
 import { database } from '../../src/database.mts';
 import { env, requiredEnv } from '../../src/config.mts';
-import { decideSalesAgent } from '../../src/sales-agent.mts';
+import { decideSalesAgent, type SalesAgentState } from '../../src/sales-agent.mts';
 import { currentToken } from '../../src/oauth-vault.mts';
 
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -26,11 +26,11 @@ export async function runWorker(request: Request) {
 export async function processAgentJob() {
   const db = database().pool;
   const client = await db.connect();
-  let job: { id: string; event_id: string; payload: unknown; return_url: string } | undefined;
+  let job: { id: string; event_id: string; conversation_id: string; payload: unknown; return_url: string } | undefined;
   try {
     await client.query('BEGIN');
     const result = await client.query(
-      `SELECT id, event_id, payload, return_url
+      `SELECT id, event_id, conversation_id, payload, return_url
          FROM elear_private.agent_jobs
         WHERE status = 'queued' AND available_at <= now()
         ORDER BY id
@@ -41,7 +41,7 @@ export async function processAgentJob() {
       await client.query('COMMIT');
       return Response.json({ processed: false, reason: 'empty_queue' }, { status: 200, headers });
     }
-    const claimed = result.rows[0] as { id: string; event_id: string; payload: unknown; return_url: string };
+    const claimed = result.rows[0] as NonNullable<typeof job>;
     job = claimed;
     await client.query(
       `UPDATE elear_private.agent_jobs
@@ -61,7 +61,14 @@ export async function processAgentJob() {
   const claimedJob = job;
 
   try {
-    const decision = decideSalesAgent({ message: messageFromPayload(claimedJob.payload) });
+    const previous = await db.query(
+      `SELECT payload->'agent_context' AS state FROM elear_private.agent_jobs
+        WHERE conversation_id = $1 AND status = 'completed' AND id < $2
+          AND updated_at > now() - interval '24 hours' AND payload ? 'agent_context'
+        ORDER BY id DESC LIMIT 1`, [claimedJob.conversation_id, claimedJob.id],
+    );
+    const state = previous.rows[0]?.state as SalesAgentState | undefined;
+    const decision = decideSalesAgent({ message: messageFromPayload(claimedJob.payload), state: state?.version === 1 ? state : undefined });
     const accessToken = await currentToken(new URL(requiredEnv('KOMMO_BASE_URL')).origin);
     const callback = await fetch(claimedJob.return_url, {
       method: 'POST',
@@ -72,8 +79,9 @@ export async function processAgentJob() {
     });
     if (!callback.ok) throw new Error(`Kommo callback HTTP ${callback.status}`);
     await db.query(
-      `UPDATE elear_private.agent_jobs SET status = 'completed', updated_at = now() WHERE id = $1`,
-      [claimedJob.id],
+      `UPDATE elear_private.agent_jobs SET status = 'completed',
+         payload = payload || $2::jsonb, updated_at = now() WHERE id = $1`,
+      [claimedJob.id, JSON.stringify({ agent_context: decision.state, agent_decision: { mode: decision.mode, reason: decision.reason } })],
     );
     return Response.json({ processed: true, event_id: claimedJob.event_id, mode: decision.mode }, { status: 200, headers });
   } catch (error) {
