@@ -1,5 +1,5 @@
 import { database } from '../../src/database.mts';
-import { env, requiredEnv } from '../../src/config.mts';
+import { env } from '../../src/config.mts';
 import { decideSalesAgent } from '../../src/sales-agent.mts';
 
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -19,7 +19,10 @@ function messageFromPayload(payload: unknown): string {
 export async function runWorker(request: Request) {
   if (request.method !== 'POST') return Response.json({ error: 'POST only' }, { status: 405, headers: { ...headers, Allow: 'POST' } });
   if (!authorized(request)) return Response.json({ error: 'Unauthorized' }, { status: 401, headers });
+  return processAgentJob();
+}
 
+export async function processAgentJob() {
   const db = database().pool;
   const client = await db.connect();
   let job: { id: string; event_id: string; payload: unknown; return_url: string } | undefined;
