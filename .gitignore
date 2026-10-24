@@ -8,3 +8,6 @@
 .claude/settings.json.bak-*
 .swarm/
 ruvector.db
+.claude-flow/daemon-state.json
+.claude-flow/daemon.pid
+.claude-flow/daemon.log

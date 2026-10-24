@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-10-24T05:36:56.437Z",
+  "projectRoot": "/home/user/ai-hub",
+  "structure": {
+    "hasPackageJson": false,
+    "hasTsConfig": false,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1792820216437
+}
